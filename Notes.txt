@@ -1,1 +1,13 @@
+RSA
+ - An asymmetric public-key cryptosystem. It is the oldest and most deployed algorithm for securing digitla communications
+ - Unlike systemmetric algorithms like AES, RSA uses a mathematically linked key pait, anything encrypted
+    with the public key can only be decrypted with the private key, vice versa
+ - Asymmetry solves the key distribution problem that plagued symmetric encryption
+ - Freely share public key with the entire world without compromised secruity
 
+
+
+
+Math
+ - Secuirty relies on the practial difficulty of factoring the product of two large prime numbers (Integer Factorization Problem)
+ - 
