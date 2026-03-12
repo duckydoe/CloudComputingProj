@@ -1,13 +1,131 @@
 RSA
- - An asymmetric public-key cryptosystem. It is the oldest and most deployed algorithm for securing digitla communications
- - Unlike systemmetric algorithms like AES, RSA uses a mathematically linked key pait, anything encrypted
-    with the public key can only be decrypted with the private key, vice versa
- - Asymmetry solves the key distribution problem that plagued symmetric encryption
- - Freely share public key with the entire world without compromised secruity
+RSA, Rivest-Shamir-Adleman(1977), oldest most deployed asymmetric cryptosystem
+Uses a key pair-> public key(shared freely) + private key (kept secret)
+Anything encrypted with the public key can only be decrypted with the private key
+Solves the key distribution problem. no need to share a secret before communications
+Used for: encryption, digital signatures, key exchange, identity verification
 
 
 
 
 Math
- - Secuirty relies on the practial difficulty of factoring the product of two large prime numbers (Integer Factorization Problem)
- - 
+Security is based on the Integer Factorization Problem, multiplying two large primes is easy; reversing it is the computational infeasible problem
+Choose two large primes: P & Q
+compute N = P * Q 
+(The modulus, this is public)
+compute φ(N) = (P - 1) (Q - 1)
+Euler’s Totient
+Choose E = 65537 (public exponent
+standard choice, prime, fast)
+compute D = modular inverse of E mod φ(N)
+this is the private exponent
+public key = (N, E) | private key = (N, D) | P & Q destroyed after
+Encryption: C = M^E mod N | Decryption: M = C^D mod N
+Signing: S = M^D mod N | Verification: M = S^E mod N
+Raw/Textbook RSA is never used in production
+It has no randomness, same input always gives same output
+
+
+Key Size
+Security Equivalent
+Status
+RSA-512
+~56-bit
+BROKEN — factored in 1999
+RSA-1024
+~80-bit
+INSECURE — do not use
+RSA-2048
+~112-bit
+Minimum standard, secure through ~2030
+RSA-3072
+~128-bit
+Recommended if data lifetime exceeds 5 years
+RSA-4096
+~140-bit
+High-security / CA use — 4–8× slower than 2048
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+NIST mandates RSA-2048 minimum for current systems
+RSA-4096 is used for Certificate Authorities and keys with very long lifetimes
+for performance sensitive cloud workloads, consider ECDSA P-256 (equivalent to RSA-3072, far smaller and faster)
+
+Padding Schemes (Critical Layer)
+Raw RSA is deterministic and insecure. Padding adds randomness and structure 
+
+PKCS#1 v1.5
+Legacy standard from 1993, still widely deployed in TLS and email (S/MIME) 
+Vulnerable to Bleichenbacker’s padding oracle attack (1998)
+explore more into this ^
+Still acceptable for signatures in legacy systems
+
+OAEP -> Optimal Asymmetric Encryption Padding 
+Current Standard for RSA encryption
+Uses a mash generation function to randomize output
+Identical plaintexts produce different ciphertexts every time (semantic security)
+Required by AWS KMS, Azure Key Vault, GCP Cloud KMS
+RSA-2048 with OAEP-SHA256 can encrypt at most about 190bytes which is why hybrid encryption exists
+PSS -> Probabilistic Signature Scheme
+Current standard for RSA Signatures
+uses a random salt, same message signed twice gives different signatures
+Required by TLS 1.3 (PKCS#1 v1.5 signatures are banned in TLS 1.3
+Configure salt length = hash output length 
+
+
+Use Case
+Use This
+Avoid
+Encrypting data
+OAEP (SHA-256 or SHA-512)
+Textbook RSA, PKCS#1 v1.5
+Signing data
+PSS (SHA-256 or SHA-512)
+PKCS#1 v1.5 if avoidable
+TLS 1.3
+PSS required by spec
+PKCS#1 v1.5 banned
+
+
+Hybrid Encryption -> How RSA Actually Works in the Cloud
+RSA alone can only encrypt about 190 bytes and is far too slow for bulk data. The solution is hybrid exceptions used by major cloud providers. 
+
+Sender Side
+Generate a random 256-bit AES session key
+Encrypt the actual data with Aes-256-GCM using that key
+Encrypt the AES key with the recipient’s RSA public key (OAEP)
+Transmit: Encrypted data + RSA-wrapped AES key + GCM auth tag + IV
+Receiver Side
+Decrypt the wrapped AES key using your RSA private key
+Use the recovered AES key to decrypt the data with AES-256-GCM
+GCM auth tag automatically detects any tampering
+
+AWS KMS envelope encryption works as so, the RSA key lives in the HSM, it never touches your data directly
+Common pairings SA-OAEP + AES-256-GCM (cloud standard), RSA-OAEP + ChaCha20-Poly1305 (mobile/IoT)
+
+RSA in Major Cloud Platforms
+AWS KMS
+Supports RSA-2048, 3072, 4096
+Encryption: RSAES_OAEP_SHA_256 (recommended), RSAES_OAEP_SHA_1
+Signing: RSASSA_PSS_SHA_256/384/512 and RSASSA_PKCS1_V1_5 variants
+Keys stored in FIPS 140-2 Level 3 HSMs — private key never leaves
+~$1/month per key + $0.03 per 10,000 API calls
+Azure Key Vault
+RSA 2048, 3072, 4096 — software or HSM-backed tiers
+Signing algorithms use JWA names: RS256 (PKCS#1 v1.5), PS256 (PSS) — maps to JWT/JWK standards
+Managed HSM = single-tenant FIPS 140-2 Level 3 with customer-controlled keys
+GCP Cloud KMS
+Algorithm names are explicit: RSA_DECRYPT_OAEP_2048_SHA256, RSA_SIGN_PSS_4096_SHA512, etc.
+External Key Manager (EKM): keep your RSA private key on-premises — GCP workloads still use it with full audit logs
+Key Access Justifications: require explicit, logged reason for every key usage
