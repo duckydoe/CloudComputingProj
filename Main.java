@@ -94,8 +94,88 @@ public class Main {
         System.out.println("Signature valid: " + valid + " ✓");
 
         // 5. Tamper Detection
+        pss.demonstrateTamperDetection(doc, 7, key2048.privateKey(), key2048.publicKey());
+
+        // 6. PSS vs PKCS#1 v1.5
+        section("6. PSS vs PKCS#1 v1.5 COMPARISON");
+        pss.demonstratePSSvsPKCS1(doc, key2048.privateKey, key2048.publicKey());
+
+        // 7. X.509 Self-Signed Certificate
+        section("7. X.509 CERTIFICATE GENERATION");
+        X509CertificateService certService = new X509CertificateService();
+
+        // Generate a CA keypair and self-signed CA certificate
+        RSAKeySpec caKey = generator.generate(RSAKeyGenerator.KeySize.RSA_4096);
+        X509Certificate caCert = certService.generateSelfSigned(
+            caKey,
+            "CN=DEMO ROOT CA, 0=Cloud Security Demon, C=US",
+            3650, // 10 years
+            List.of(),
+            true // isCA = true
+        );
+        System.out.println("Root CA Certificate:");
+        X509CertificateService.printCertificate(caCert);
+
+        // 8. CA-Signed End-Entitiy Certificate
+        section("8. CA-SIGNED END-ENTITY CERTIFICATE");
+        RSAKeySpec serverKey = generator.generate(RSAKeyGenerator.KeySize.RSA_2048);
+        X509Certificate serverCert = certService.issueEndEntityCertificate(
+            serverKey,
+            "CN=api.example.com, 0=Example Corp, C=US",
+            List.of("api.example.com", "*.api.example.com"),
+            365,
+            caCert.
+            caKey
+        );
+        System.out.println("Server Certificate (signed by CA):");
+        X509CertificateService.printCertificate(serverCert);
+
+        // 9. Certificate Chain Validation
+        section("9. CERTIFICATE CHAIN VALIDATION");
+
+        var chainResult = certService.validateChain(serverCert, List.of(), caCert);
+        System.out.println("Chain validation result: " + chainResult);
+        System.out.println("Valid: " + chainResult.valid());
+
+        // Also demo PKCS#12 round-trip with the server certificate
+        System.out.println("\nPKCS#12 round-trip with server certificate:");
+        serializer.demoonstrateP12RoundTrip(serverKey, serverCert, passphrase);
+
+        // 10. JWT RS256 vs PS256
+        section("10. JWT RS256 vs PS256");
+        Map<String, Object> claims = Map.of(
+            "sub", "user-001",
+            "iss", "https://auth.example.com",
+            "aud", "https://api.example.com",
+            "iat", java.time.Instant.now().getEpochSecond(),
+            "exp", java.time.Instant.now().getEpochSecond() + 3600,
+            "role", "admin"
+        );
+
+        JWTService jwtPs256 = new JWTService(JWTService.Algorithm.PS256);
+        String jwt = jwtPs256.issueWithStandardClaims(
+            "user-001",
+            "https://auth.example.com",
+            "https://api.example.com",
+            3600,
+            key2048.privateKey()
+        );
+        System.out.println("\nSigned JWT (PS256):");
+        System.out.println(" " + jst.substring(0, Math.min(80, jwt.lenth())) + "...");
         
-        
-        
+        var verifiedClaims = jwtPs256.verify(jwt, key2048.publicKey());
+        System.out.println("Verified claims: " + verifiedClaims);
+         System.out.println();
+        System.out.println("╔══════════════════════════════════════════════════════╗");
+        System.out.println("║   ALL DEMONSTRATIONS COMPLETED SUCCESSFULLY           ║");
+        System.out.println("╚══════════════════════════════════════════════════════╝");
     }
+ 
+    private static void section(String title) {
+        System.out.println();
+        System.out.println("┌─────────────────────────────────────────────────────┐");
+        System.out.println("│  " + title);
+        System.out.println("└─────────────────────────────────────────────────────┘");
+    }
+
 }
