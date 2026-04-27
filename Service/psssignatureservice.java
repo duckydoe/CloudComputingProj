@@ -8,6 +8,68 @@ import java.sercurity.spec.PSSParameterSpec;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
+/*
+* PSS Signature Service
+* ----------------------
+*   Provides RSA-PSS digital signatures and verification.
+*   Also implements PKCS#1 v1.5 signatures for legacy comparison.
+*
+*   PSS - Probablistic Signature Scheme (RFC 8017 §8.1):
+*   
+*   PSS is the current recommended scheme for RSA signatures.
+*   It is probabilistic (included a random salt) and h as a tight
+*       security reduction to the RSA problem in the random oracle
+*       model.
+ * PSS ENCODING PROCESS (sign):
+ * ----------------------------
+ *   Input: message M, salt length sLen, hash H
+ *
+ *   1. mHash = H(M)                       — hash the message
+ *   2. salt  = random(sLen bytes)         — fresh randomness per signature
+ *   3. M'    = 0x00...00 || mHash || salt — 8 zero bytes + hash + salt
+ *   4. H'    = H(M')                      — hash the extended message
+ *   5. PS    = 0x00...(emLen−sLen−hLen−2) — zero padding string
+ *   6. DB    = PS || 0x01 || salt
+ *   7. dbMask = MGF1(H', emLen−hLen−1)
+ *   8. maskedDB = DB XOR dbMask
+ *   9. maskedDB[0] &= 0x7F             — clear top bit
+ *  10. EM   = maskedDB || H' || 0xBC
+ *  11. S    = EM^d mod n               — RSA private key operation
+ *
+ * WHY PSS IS BETTER THAN PKCS#1 v1.5 FOR SIGNATURES:
+ * ----------------------------------------------------
+ *   PKCS#1 v1.5 signatures are deterministic — same message + same key
+ *   always produces the same signature. This enables fault injection attacks
+ *   and provides no tight security proof.
+ *
+ *   PSS is randomized (via the salt), has a proven security reduction to RSA,
+ *   and is required by TLS 1.3 (RFC 8446 §4.2.3) for RSA certificate signatures.
+ *   PKCS#1 v1.5 signatures are banned in TLS 1.3 handshakes.
+ *
+ * SALT LENGTH:
+ * ------------
+ *   NIST SP 800-131A recommends sLen = hLen (e.g., 32 bytes for SHA-256).
+ *   Using sLen = 0 is allowed but removes the randomization benefit.
+ *   Using sLen = -1 (TRAILER_FIELD) uses maximum salt — valid but less portable.
+ *
+ * HASH-THEN-SIGN DISCIPLINE:
+ * --------------------------
+ *   RSA-PSS operates on the HASH of the message, not the raw message bytes.
+ *   The Signature class handles hashing internally when initialized with
+ *   "SHA256withRSA/PSS", so callers pass the raw message — hashing is implicit.
+ *   This is the correct pattern. Never pre-hash and then pass to PSS manually
+ *   unless you're using NONEwithRSA/PSS, which is for expert use only.
+ *
+ * TAMPER DETECTION:
+ * -----------------
+ *   PSS verification rejects any signature where:
+ *     - The signature was created with a different private key
+ *     - The message has been modified by even 1 bit
+ *     - The signature bytes have been corrupted or truncated
+ *     - A different hash algorithm or salt length was used
+ *   All of these produce a SignatureException or return false from verify().
+*/
+
 public final class PSSSignatureService {
 
     private static final Logger LOG = Logger.getLogger(PSSSignatureService.class.getName());

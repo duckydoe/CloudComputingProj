@@ -19,6 +19,55 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.uril.logging.Logger;
 
+/*
+* X.509 Certificate Service 
+*
+* Generates and validates X.509 v3 certificates using BouncyCastle.
+* X.509 CERTIFICATE STRUCTURE (RFC 5280):
+ * ----------------------------------------
+ * A certificate binds a public key to an identity (subject).
+ * It is signed by a Certificate Authority's (CA's) private key,
+ * allowing anyone with the CA's public key to verify the binding.
+ *
+ *   TBSCertificate:
+ *     version:           3 (v3, required for extensions)
+ *     serialNumber:      unique integer per CA (collision-resistant)
+ *     signature:         algorithm OID (e.g., SHA256withRSA)
+ *     issuer:            CA's Distinguished Name (DN)
+ *     validity:
+ *       notBefore:       UTC time (certificate becomes valid)
+ *       notAfter:        UTC time (certificate expires)
+ *     subject:           entity's Distinguished Name
+ *     subjectPublicKeyInfo: algorithm + public key bytes
+ *     extensions:        v3 extensions (see below)
+ *   signatureAlgorithm:  outer algorithm OID (must match TBS)
+ *   signature:           CA's RSA signature over TBSCertificate DER
+ *
+ * KEY EXTENSIONS (v3):
+ * --------------------
+ *   BasicConstraints:        isCA=true for CA certs; isCA=false for end-entity
+ *   KeyUsage:                digitalSignature, keyCertSign, cRLSign (CA)
+ *                            or digitalSignature, keyEncipherment (server)
+ *   ExtendedKeyUsage:        serverAuthentication (1.3.6.1.5.5.7.3.1) for TLS
+ *   SubjectAlternativeName:  DNS names and IP addresses for TLS validation
+ *   SubjectKeyIdentifier:    SHA-1 hash of the public key — links key bags in PKCS#12
+ *   AuthorityKeyIdentifier:  links to the issuing CA's SubjectKeyIdentifier
+ *
+ * CERTIFICATE CHAIN VALIDATION (RFC 5280):
+ * -----------------------------------------
+ * A chain: EndEntity → Intermediate CA → Root CA
+ *
+ *   For each certificate pair (subject, issuer):
+ *     1. issuer.subject == subject.issuer           (name chaining)
+ *     2. RSA-PSS verify(subject.tbsCert, subject.sig, issuer.publicKey)
+ *     3. now ∈ [subject.notBefore, subject.notAfter] (validity period)
+ *     4. issuer.isCA == true                         (BasicConstraints)
+ *     5. issuer.keyUsage includes keyCertSign        (KeyUsage extension)
+ *
+ * Cloud TLS certificates are validated by cloud load balancers, CDNs,
+ * and client applications using this exact algorithm on every HTTPS connection.
+*/
+
 public final class X509CertificateService {
     private static final Logger LOG = Logger.getLogger(X509CertificateService.class.getName());
 

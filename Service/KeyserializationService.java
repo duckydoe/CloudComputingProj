@@ -24,7 +24,29 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.logging.Logger;
-
+/*
+* Key Serialization Service
+*
+*   Serialized and deserializes RSA keys in the formats used across
+* cloud-infrastructure, enterprise systems, and standard PKI
+*
+* Formats Supported:
+*      1. PEM - Privacy Enhanced Mail (RFC 7468)
+*           The most common format in Linux/cloud environments.
+*      2. PKCS#8 - Public Key Cryptography Standard #8
+*           Algorithm-agnostic private key container
+*                PrivateKeyInfo
+*                EncryptedPrivateKeyInfo
+*      3. PKCS#12 - Personal Information Exchanged Syntax (RFC 7292)
+*           Binary format bundling: 
+*               private key + certificate 
+*               + optional chain certificates
+*           Password-protected using AES-256-CBC for key
+*            encryption and SHA-256 for MAC.
+*           File extensions:
+*               .p12 (general), .pfx (Windows legacy naming)
+*
+*/
 
 public final class KeySerializationService {
 
