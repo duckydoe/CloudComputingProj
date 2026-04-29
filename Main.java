@@ -10,8 +10,8 @@ import Service.OAEPEncryptionService;
 import Service.PSSSignatureService;
 
 import java.security.cert.X509Certificate;
-import java.List;
-import java.Map;
+import java.util.List;
+import java.util.Map;
 
 public class Main {
 
@@ -50,7 +50,8 @@ public class Main {
         System.out.println("Plaintext:  \"" + message.length + " bytes");
         System.out.println("Max plaintext for RSA-2048/SHA-256: "
                         + oaep.maxPlaintextBytes(key2048.publicKey()) + " bytes");
-        bytes[] decrypted = oaep.decrypt(ciphertext, key2048.privateKey());
+        byte[] ciphertext = oaep.encryp(message, key2049.publicKey());
+        byte[] decrypted = oaep.decrypt(ciphertext, key2048.privateKey());
         System.out.println("Decrypted:  \"" + new String(decrypted) + "\"");
         System.out.println("Roundtrip match: " + java.util.Arrays.equals(message, decrypted));
 
@@ -64,19 +65,19 @@ public class Main {
 
         String publicPEM = serializer.publicKeyToPEM(key2048.publicKey());
         System.out.println("Public Key PEM (first 3 lines):");
-        publicPEM.lines().limit(3).forEach(l -> System.out.println(" " + 1));
+        publicPEM.lines().limit(3).forEach(l -> System.out.println("  " + l));
 
         char[] passphrase = "SuperSecret$1234!".toCharArray();
-        String eacPrivePEM = serializer.encryptedPrivateKeyToPEM(key2048.privateKey(), passphrase);
+        String eacPrivPEM = serializer.encryptedPrivateKeyToPEM(key2048.privateKey(), passphrase);
         System.out.println("\nEncrypted Private Key PEM (first 3 lines):");
-        encPrivPEM.lines().limit(3).forEach(l -> System.out.println(" " + 1));
+        encPrivPEM.lines().limit(3).forEach(l -> System.out.println("  " + l));
 
         // Round-trip: Parse back
         var loadedPub = serializer.publicKeyFromPEM(publicPEM);
-        SYstem.out.println("\n✓ Public key PEM round-trip: "
-                        + loadedPub.getModulus().equals(key2048.publicKey().getModulus());
-        var loadedPriv = serializer.encryptedPrivateKeyToPEM(encPrivPEM, passphrase);
-        Sytem.out.println("✓ Private key PEM round-trip: "
+        System.out.println("\n✓ Public key PEM round-trip: "
+                        + loadedPub.getModulus().equals(key2048.publicKey().getModulus()));
+        var loadedPriv = serializer.encryptedPrivateKeyFromPEM(encPrivPEM, passphrase);
+        System.out.println("✓ Private key PEM round-trip: "
                         + loadedPriv.getPrivateExponent().equals(key2048.privateKey().getPrivateExponent()));
         
         // 4. PSS Signing
@@ -88,7 +89,7 @@ public class Main {
 
         byte[] sig = pss.sign(doc, key2048.privateKey());
         System.out.println("Document:  \"" + new String(doc) + "\"");
-        SYstem.out.println("Signature: " + siganture.length + " bytes (RSA-2048 modulus size)");
+        SYstem.out.println("Signature: " + sig.length + " bytes (RSA-2048 modulus size)");
 
         boolean valid = pss.verify(doc, sig, key2048.publicKey());
         System.out.println("Signature valid: " + valid + " ✓");
@@ -98,7 +99,7 @@ public class Main {
 
         // 6. PSS vs PKCS#1 v1.5
         section("6. PSS vs PKCS#1 v1.5 COMPARISON");
-        pss.demonstratePSSvsPKCS1(doc, key2048.privateKey, key2048.publicKey());
+        pss.demonstratePSSvsPKCS1(doc, key2048.privateKey(), key2048.publicKey());
 
         // 7. X.509 Self-Signed Certificate
         section("7. X.509 CERTIFICATE GENERATION");
@@ -124,7 +125,7 @@ public class Main {
             "CN=api.example.com, 0=Example Corp, C=US",
             List.of("api.example.com", "*.api.example.com"),
             365,
-            caCert.
+            caCert,
             caKey
         );
         System.out.println("Server Certificate (signed by CA):");
@@ -139,7 +140,7 @@ public class Main {
 
         // Also demo PKCS#12 round-trip with the server certificate
         System.out.println("\nPKCS#12 round-trip with server certificate:");
-        serializer.demoonstrateP12RoundTrip(serverKey, serverCert, passphrase);
+        serializer.demonstrateP12RoundTrip(serverKey, serverCert, passphrase);
 
         // 10. JWT RS256 vs PS256
         section("10. JWT RS256 vs PS256");
@@ -161,7 +162,7 @@ public class Main {
             key2048.privateKey()
         );
         System.out.println("\nSigned JWT (PS256):");
-        System.out.println(" " + jst.substring(0, Math.min(80, jwt.lenth())) + "...");
+        System.out.println(" " + jwt.substring(0, Math.min(80, jwt.length())) + "...");
         
         var verifiedClaims = jwtPs256.verify(jwt, key2048.publicKey());
         System.out.println("Verified claims: " + verifiedClaims);
