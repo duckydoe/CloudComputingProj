@@ -81,7 +81,7 @@ public final class PSSSignatureService {
             new PSSParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1)
         ),
         SHA384_SALT48(
-            "SHA348withRSA/PSS",
+            "SHA384withRSA/PSS",
             new PSSParameterSpec("SHA-384", "MGF1", MGF1ParameterSpec.SHA384, 48, 1)
         ),
         SHA512_SALT64(
