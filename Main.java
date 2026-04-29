@@ -5,10 +5,6 @@ import com.rsa.cloud.model.RSAKeySpec;
 import com.rsa.cloud.pki.*;
 import com.rsa.cloud.util.SecurityProvider;
 
-import Service.KeySerializationService;
-import Service.OAEPEncryptionService;
-import Service.PSSSignatureService;
-
 import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +46,7 @@ public class Main {
         System.out.println("Plaintext:  \"" + message.length + " bytes");
         System.out.println("Max plaintext for RSA-2048/SHA-256: "
                         + oaep.maxPlaintextBytes(key2048.publicKey()) + " bytes");
-        byte[] ciphertext = oaep.encryp(message, key2049.publicKey());
+        byte[] ciphertext = oaep.encryp(message, key2048.publicKey());
         byte[] decrypted = oaep.decrypt(ciphertext, key2048.privateKey());
         System.out.println("Decrypted:  \"" + new String(decrypted) + "\"");
         System.out.println("Roundtrip match: " + java.util.Arrays.equals(message, decrypted));
@@ -68,7 +64,7 @@ public class Main {
         publicPEM.lines().limit(3).forEach(l -> System.out.println("  " + l));
 
         char[] passphrase = "SuperSecret$1234!".toCharArray();
-        String eacPrivPEM = serializer.encryptedPrivateKeyToPEM(key2048.privateKey(), passphrase);
+        String encPrivPEM = serializer.encryptedPrivateKeyToPEM(key2048.privateKey(), passphrase);
         System.out.println("\nEncrypted Private Key PEM (first 3 lines):");
         encPrivPEM.lines().limit(3).forEach(l -> System.out.println("  " + l));
 
@@ -89,7 +85,7 @@ public class Main {
 
         byte[] sig = pss.sign(doc, key2048.privateKey());
         System.out.println("Document:  \"" + new String(doc) + "\"");
-        SYstem.out.println("Signature: " + sig.length + " bytes (RSA-2048 modulus size)");
+        System.out.println("Signature: " + sig.length + " bytes (RSA-2048 modulus size)");
 
         boolean valid = pss.verify(doc, sig, key2048.publicKey());
         System.out.println("Signature valid: " + valid + " ✓");
