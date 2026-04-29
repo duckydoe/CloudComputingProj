@@ -108,7 +108,7 @@ public final class RSAKeyGenerator {
         *     Windows-PRNG backed by CryptGenRandom
         */
        this.secureRandom = SecureRandom.getInstanceStrong();
-       this.keyPairGenerator = KeyPairGenertar.getInstance("RSA", SecurityProvider.BC());
+       this.keyPairGenerator = KeyPairGenerator.getInstance("RSA", SecurityProvider.BC());
     } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
         throw new GenerationException("Failed to initialise RSA KeyPairGenerator", e);
     }
