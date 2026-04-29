@@ -171,7 +171,7 @@ public final class KeySerializationService {
             JcaPKCS12SafeBagBuilder keyBagBuilder = 
                 new JcaPKCS12SafeBagBuilder(spec.privateKey(),
                     new JcePKCSPBEOutputEncryptorBuilder(
-                        org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers.PKCSObjectIdentifiers.id_PBES2
+                        org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers.pbeWithSHAAnd3_KeyTripleDES_CBC
                     ).setProvider(SecurityProvider.BC())
                     .build(passphrase)).addBagAttribute(
                         org.bouncycastle.asn1.pkcs.
@@ -262,8 +262,7 @@ public final class KeySerializationService {
         System.out.printf("Created PKCS#12 Archive: %d bytes%n", p12.length);
         KeyStore.PrivateKeyEntry loaded = fromP12(p12, "demo-key", passphrase);
         System.out.println("Loaded Private Key: " + loaded.getPrivateKey().getAlgorithm());
-        System.out.println("Loaded Certificate Subject: " + ((X509Certificate) loaded.getCertificate()).
-            .getSubjectX500Principal());
+        System.out.println("Loaded Certificate Subject: " + ((X509Certificate) loaded.getCertificate()).getSubjectX500Principal());
         
             java.security.interfaces.RSAPrivateKey loadedPriv =
                                     (java.security.interfaces.RSAPrivateKey)
