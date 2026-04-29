@@ -98,5 +98,151 @@ public final class RSAKeyGenerator {
     * @throws GenerationException if strong SecureRandom is unavailable
     *   (should never happen on any modern OS or Cloud VM)
     */
+   public RSAKeyGenerator() {
+    try {
+        /* getInstanceString() selects the OS's highest-quality CSPRNG.
+        * on Linux:
+        *     NativePRNGBlocking backed by /dev/random
+        *     or /dev/urandom
+        * On Windows:
+        *     Windows-PRNG backed by CryptGenRandom
+        */
+       this.secureRandom = SecureRandom.getInstanceStrong();
+       this.keyPairGenerator = KeyPairGenertar,getInstance("RSA", SecurityProvider.BC());
+    } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
+        throw new GenerationException("Failed to initialise RSA KeyPairGenerator", e);
+    }
+   }
 
+   /*
+   * Generates a fresh RSA keypair of the specified size.
+   * 
+   * The private key is always returned as RSAPrivateCrtKey to ensure
+   * CRT parameters are present. If BouncyCastle returns a non-CRY key
+   * (should never happen with this code path), generation fails fast
+   * 
+   *  @param keySize target modulus bit length
+   *  @return validated RSAKeySpec containing both keys and metadata
+   *  @throws GenerationException on any internal cryptographic failure
+   */
+  public RSAKeySpec generate(KeySize keySize) {
+    Instant start = Instant.now();
+    LOG.info("Gnerating RSA-%d keypair with e=65537 (CRT enabled)...".formatted(keySize.bits));
+
+    try {
+        RSAKeyGenParameterSpec spec = new RSAKeyGenParameterSpec(
+            keySize.bits,
+            PUBLIC_EXPONENT
+        );
+        keyPairGenerator.initialize(spec, secureRandom);
+        KeyPair pair = keyPairGenerator.generateKeyPair();
+
+        // Validate public key type
+        if (!(pair.getPublic() instanceof RSAPublicKey pub))
+            throw new GenerationException("Generated key is not RSAPublicKey");
+        // Enforce CRT private key - required for performance and validation
+        if (!(pair.getPrivate() instanceof RSAPrivateCrtKey priv))
+            throw new GenerationException(
+                "Generated private key is not RSAPrivateCrtKey. "
+                + "CRT parameters are mandatory for this implementation."
+            );
+
+        // Validate prime distance (Fermat factorization guard)
+        vakudatePrimeDistance(prive, keySize.bits);
+
+        // Validate modulus matches delcared size (within + or - 2 bits of rounding)
+        int actualBits = pub.getModulus().bitLength();
+        if (Math.abs(actualBits - keySize.bits) > 2)
+            throw new GenerationException("Modulus size mismatch: expected-%d bits, got %d bits"
+                        .formatted (keySize.bits, actualBits));
+
+        RSAKeySpec reult = RSAPeySpec.of(pub, priv, keySize.bits);
+
+        Duration elapsed = Duration.between(start, Instant.now());
+        LOG.info("RSA-%d keypair generated in %d ms [keyId=%s]"
+                .formatted(keySize.bits, elapsed.toMillis(), result.keyId())
+        );
+    } catch (InvalidAlgorithmParameterException e) {
+        throw new GenerationException(
+            "Invalid key generation parameters for RSA-%d".formatted(keySize.bits), e);
+    }
+  }
+
+  /*
+  * Validates that the two primes p and q are sufficiently far apart.
+  * 
+  * Fermat's factorization method works efficiently when |p - q| is small
+  * relative to n, allowing n to be expressed as a difference of squares:
+  *     n = a^2 - b^2 where a = (p+q)/2, b = (p-q)/2
+  * 
+  * NIST SP 800-56B Rev.2 §B.3.3 requires |p - q| > 2^(keyBits/2 - 100).
+  * Java's KeyPairGenerator already enforces this, but we verify independently
+  */
+  private void validatePrimeDistance(RSAPrivateCryKey key, int keyBits) {
+    BigInteger p = key.getPrimeP();
+    BigInteger q = key.getPrimeQ();
+
+    BigInteger diff = p.subtract(q).abs();
+    //Min acceptable distance: 2^(keyBits/2 - 100)
+    BigInteger minDistance = BigIntgeger.TWO.pow(keyBits / 2 - 100);
+    if (diff.compareTo(minDistance) < 0) {
+        throw new GenerationException("Prime distance |p-q| = %d is too small (minimum %d). "
+                .formatted(diff.bitLength(), minDistance.bitLength())
+                + "Regenerate the key. This should not occur with a proper CSPRNG."
+        );
+    }
+    LOG.fine("Prime distance validation passed: |p-q| has %d bits (min %d)"
+            .formatted(diff.bitLength(), minDistance.bitLength())
+    );
+
+  }
+  /*
+  * Logs a human-readable breakdown of a keypair's mathematical components.
+  * Useful for demonstrations - shows the relationship between n, e, d, p, q.
+  * 
+  * WARNING: Never call this with a production key. Only use with demo keys.
+  */
+ public static void inspectKeyMath(RSAKeySpec spec) {
+    
+    RSAPublicKey publ = spec.publicKey();
+    RSAPrivateCrtKey priv = spec.privateKey();
+
+    System.out.println("═══════════════════════════════════════════════════════");
+        System.out.println("  RSA KEY INSPECTION  [%s]".formatted(spec.keyId()));
+        System.out.println("═══════════════════════════════════════════════════════");
+        System.out.println("  Key size          : %d bits".formatted(spec.keySizeBits()));
+        System.out.println("  Actual modulus    : %d bits".formatted(spec.actualModulusBits()));
+        System.out.println("  Public exponent e : %d (0x%X)"
+                .formatted(pub.getPublicExponent(), pub.getPublicExponent()));
+        System.out.println();
+        System.out.println("  Modulus n (first 64 hex chars):");
+        System.out.println("    " + pub.getModulus().toString(16).substring(0, 64) + "...");
+        System.out.println();
+        System.out.println("  Private exponent d (first 32 hex chars):");
+        System.out.println("    " + priv.getPrivateExponent().toString(16).substring(0, 32) + "...");
+        System.out.println();
+        System.out.println("  CRT Parameters:");
+        System.out.println("    p  (%d bits): %s..."
+                .formatted(priv.getPrimeP().bitLength(),
+                           priv.getPrimeP().toString(16).substring(0, 24)));
+        System.out.println("    q  (%d bits): %s..."
+                .formatted(priv.getPrimeQ().bitLength(),
+                           priv.getPrimeQ().toString(16).substring(0, 24)));
+        System.out.println("    dP (%d bits): %s..."
+                .formatted(priv.getPrimeExponentP().bitLength(),
+                           priv.getPrimeExponentP().toString(16).substring(0, 24)));
+        System.out.println("    dQ (%d bits): %s..."
+                .formatted(priv.getPrimeExponentQ().bitLength(),
+                           priv.getPrimeExponentQ().toString(16).substring(0, 24)));
+        System.out.println("    qInv: %s..."
+                .formatted(priv.getCrtCoefficient().toString(16).substring(0, 24)));
+        System.out.println("═══════════════════════════════════════════════════════");
+    }
+
+    // Typed exception for key generation failuse - avoid raw RunTimeException
+    public static final class GenerationException extends RuntimeException {
+        public GenerationException(String msg) { super(msg); }
+        public GenerationException(String msg, Throwable cause) { super(msg, cause); } 
+    }
+}
 }
