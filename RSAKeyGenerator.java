@@ -7,7 +7,7 @@ import java.math.BigInteger;
 import java.security.*;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.RSAKeyGenParameterSpec;;
+import java.security.spec.RSAKeyGenParameterSpec;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.logging.Logger;
@@ -78,8 +78,8 @@ public final class RSAKeyGenerator {
 
     // Supported key sizes enforced at generation time
     public enum KeySize {
-        RSA_2048(2048);
-        RSA_3072(3072);
+        RSA_2048(2048),
+        RSA_3072(3072),
         RSA_4096(4096);
 
         public final int bits; 
@@ -108,7 +108,7 @@ public final class RSAKeyGenerator {
         *     Windows-PRNG backed by CryptGenRandom
         */
        this.secureRandom = SecureRandom.getInstanceStrong();
-       this.keyPairGenerator = KeyPairGenertar,getInstance("RSA", SecurityProvider.BC());
+       this.keyPairGenerator = KeyPairGenertar.getInstance("RSA", SecurityProvider.BC());
     } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
         throw new GenerationException("Failed to initialise RSA KeyPairGenerator", e);
     }
@@ -148,7 +148,7 @@ public final class RSAKeyGenerator {
             );
 
         // Validate prime distance (Fermat factorization guard)
-        vakudatePrimeDistance(prive, keySize.bits);
+        validatePrimeDistance(priv, keySize.bits);
 
         // Validate modulus matches delcared size (within + or - 2 bits of rounding)
         int actualBits = pub.getModulus().bitLength();
@@ -156,12 +156,13 @@ public final class RSAKeyGenerator {
             throw new GenerationException("Modulus size mismatch: expected-%d bits, got %d bits"
                         .formatted (keySize.bits, actualBits));
 
-        RSAKeySpec reult = RSAPeySpec.of(pub, priv, keySize.bits);
+        RSAKeySpec result = RSAKeySpec.of(pub, priv, keySize.bits);
 
         Duration elapsed = Duration.between(start, Instant.now());
         LOG.info("RSA-%d keypair generated in %d ms [keyId=%s]"
                 .formatted(keySize.bits, elapsed.toMillis(), result.keyId())
         );
+        return result;
     } catch (InvalidAlgorithmParameterException e) {
         throw new GenerationException(
             "Invalid key generation parameters for RSA-%d".formatted(keySize.bits), e);
@@ -178,13 +179,13 @@ public final class RSAKeyGenerator {
   * NIST SP 800-56B Rev.2 §B.3.3 requires |p - q| > 2^(keyBits/2 - 100).
   * Java's KeyPairGenerator already enforces this, but we verify independently
   */
-  private void validatePrimeDistance(RSAPrivateCryKey key, int keyBits) {
+  private void validatePrimeDistance(RSAPrivateCrtKey key, int keyBits) {
     BigInteger p = key.getPrimeP();
     BigInteger q = key.getPrimeQ();
 
     BigInteger diff = p.subtract(q).abs();
     //Min acceptable distance: 2^(keyBits/2 - 100)
-    BigInteger minDistance = BigIntgeger.TWO.pow(keyBits / 2 - 100);
+    BigInteger minDistance = BigInteger.TWO.pow(keyBits / 2 - 100);
     if (diff.compareTo(minDistance) < 0) {
         throw new GenerationException("Prime distance |p-q| = %d is too small (minimum %d). "
                 .formatted(diff.bitLength(), minDistance.bitLength())
@@ -204,7 +205,7 @@ public final class RSAKeyGenerator {
   */
  public static void inspectKeyMath(RSAKeySpec spec) {
     
-    RSAPublicKey publ = spec.publicKey();
+    RSAPublicKey pub = spec.publicKey();
     RSAPrivateCrtKey priv = spec.privateKey();
 
     System.out.println("═══════════════════════════════════════════════════════");
@@ -244,5 +245,4 @@ public final class RSAKeyGenerator {
         public GenerationException(String msg) { super(msg); }
         public GenerationException(String msg, Throwable cause) { super(msg, cause); } 
     }
-}
 }
