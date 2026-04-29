@@ -41,8 +41,7 @@ public record RSAKeySpec(
         if (privateKey.getPrimeP() == null || privateKey.getPrimeQ() == null)
             throw new IllegalArgumentException(
                 "Private key is missing CRT parameters (p, q). "
-                + " Ensure key was generated via Key Pair Generator,
-                not reconstructed from raw d."
+                + " Ensure key was generated via Key Pair Generator, not reconstructed from raw d."
             );
     }
 
@@ -50,7 +49,7 @@ public record RSAKeySpec(
     * Factory - generates a random keyId using UUID v4.
     * Use when a stable ID is not yet assigned.
     */
-   public static RSAKeySpec of(RSAPublicKey pub, RSA PrivateCrtKey priv, int bits){
+   public static RSAKeySpec of(RSAPublicKey pub, RSAPrivateCrtKey priv, int bits){
     return new RSAKeySpec(
         UUID.randomUUID().toString(),
         pub,
