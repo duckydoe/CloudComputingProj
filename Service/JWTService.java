@@ -31,9 +31,7 @@ public final class JWTService {
     private static final Base64.Encoder B64_URL = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder B64_URL_DEC = Base64.getUrlDecoder();
 
-    public final String algHeader;
-    public final String jceName; 
-    public final PSSParameterSpec pssParams;
+   
     
     public enum Algorithm{
         RS256("RS256", "SHA256withRSA", null),
@@ -42,6 +40,9 @@ public final class JWTService {
                 MGF1ParameterSpec.SHA256, 32, 1
             )
         );
+        public final String algHeader;
+        public final String jceName; 
+        public final PSSParameterSpec pssParams;
 
         Algorithm(String algHeader, String jceName, PSSParameterSpec pssParams) {
             this.algHeader = algHeader;
