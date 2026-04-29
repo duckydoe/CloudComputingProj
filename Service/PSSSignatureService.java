@@ -4,7 +4,7 @@ import com.rsa.cloud.util.SecurityProvider;
 
 import java.security.*;
 import java.security.spec.MGF1ParameterSpec;
-import java.sercurity.spec.PSSParameterSpec;
+import java.security.spec.PSSParameterSpec;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
@@ -77,13 +77,13 @@ public final class PSSSignatureService {
     public enum PSSConfig {
 
         SHA256_SALT32(
-            "SHA256withRSA/PSS"
+            "SHA256withRSA/PSS",
             new PSSParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1)
-        );
+        ),
         SHA384_SALT48(
             "SHA348withRSA/PSS",
             new PSSParameterSpec("SHA-384", "MGF1", MGF1ParameterSpec.SHA384, 48, 1)
-        );
+        ),
         SHA512_SALT64(
             "SHA512withRSA/PSS",
             new PSSParameterSpec("SHA-512", "MGF1", MGF1ParameterSpec.SHA512, 64, 1)
@@ -120,9 +120,9 @@ public final class PSSSignatureService {
             sig.setParameter(config.spec);
             sig.initSign(privateKey, new SecureRandom());
             sig.update(message);
-            byte[] Signature = sig.sign();
+            byte[] signature = sig.sign();
 
-            Log.fine("PSS signed %d-byte message -> %d-byte signature (config=%s)"
+            LOG.fine("PSS signed %d-byte message -> %d-byte signature (config=%s)"
                 .formatted(message.length, signature.length, config.name()));
                 return signature;
         } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
@@ -137,18 +137,18 @@ public final class PSSSignatureService {
     }
 
 
-    public boolean verify(byte[] message, byte[] signature, Public Key publicKey) {
-        if (mesage == null || signature == null)
+    public boolean verify(byte[] message, byte[] signature, PublicKey publicKey) {
+        if (message == null || signature == null)
             return false;
 
         try {
             Signature sig = Signature.getInstance(config.jceName, SecurityProvider.BC());
-            sig.setParameter(config.spec());
+            sig.setParameter(config.spec);
             sig.initVerify(publicKey);
             sig.update(message);
             boolean valid = sig.verify(signature);
             
-            Log.fine("PSS verify: %s (message=%d bytes, sig=%d bytes)"
+            LOG.fine("PSS verify: %s (message=%d bytes, sig=%d bytes)"
                 .formatted(valid ? "VALID" : "INVALID", message.length, signature.length)
             );
             return valid;
@@ -276,7 +276,7 @@ public final class PSSSignatureService {
 
     private static String toHexPrefix(byte[] bytes, int n) {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < Math.min(n, bytes.lenth); i++)
+        for (int i = 0; i < Math.min(n, bytes.length); i++)
             sb.append("%02X".formatted(bytes[i] & 0xFF));
         return sb.toString();
     }
