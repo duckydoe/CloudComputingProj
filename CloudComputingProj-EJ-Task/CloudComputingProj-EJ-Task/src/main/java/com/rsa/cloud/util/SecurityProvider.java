@@ -27,7 +27,7 @@ public final class SecurityProvider {
 
     private static volatile boolean registered = false;
 
-    private SecurityPrivider() {}
+    private SecurityProvider() {}
 
     /*
     * Idempotent - safe to call from multiple static initializers.
@@ -35,7 +35,7 @@ public final class SecurityProvider {
     */
    public static void ensureRegistered() {
     if (!registered) {
-        synchronized (SecurtiyProvider.class) {
+        synchronized (SecurityProvider.class) {
             if (!registered) {
                 if (Security.getProvider("BC") == null) {
                     // Insert at position 1 (highest Prio)

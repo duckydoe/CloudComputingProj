@@ -6,11 +6,11 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import java.secuirty.*;
+import java.security.*;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.MGf1ParameterSpec;
-import java.security.spec.OAEPParameterSpec;
-import java.secuirty.spec.PSource;
+import java.security.spec.MGF1ParameterSpec;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
 import java.util.logging.Logger;
 
 /**
@@ -35,7 +35,7 @@ import java.util.logging.Logger;
  */
 public final class OAEPEncryptionService {
     
-    private staic final Logger LOG = logger.getLogger(
+    private static final Logger LOG = Logger.getLogger(
         OAEPEncryptionService.class.getName()
     );
 
@@ -56,7 +56,7 @@ public final class OAEPEncryptionService {
         }   
     }
 
-    static { SecurityProvider.ensureRegistered(); m}
+    static { SecurityProvider.ensureRegistered(); }
 
     private final HashAlgorithm hashAlgorithm;
 
@@ -105,7 +105,7 @@ public final class OAEPEncryptionService {
         
         try {
             Cipher cipher = Cipher.getInstance("RSA/NONE/OAEPPadding", SecurityProvider.BC());
-            cipher.init(Cipher.DECRYPT_MODE, privateKey, buildOAEPParams());
+            cipher.init(Cipher.DECRYPT_MODE, privatekey, buildOAEPParams());
             byte[] plaintext = cipher.doFinal(ciphertext);
 
             LOG.fine("OAEP decrypt: %d bytes ciphertext -> %d bytes plaintext (hash=%s)"
@@ -113,7 +113,7 @@ public final class OAEPEncryptionService {
             hashAlgorithm.JceName));
             return plaintext;
         } catch (NoSuchAlgorithmException | NoSuchPaddingException
-        | NoSuchProviderException) {
+        | NoSuchProviderException e) {
             throw new OAEPException("OAEP cipher not avaiable", e);
         } catch ( InvalidKeyException | InvalidAlgorithmParameterException e) {
             throw new OAEPException("Invalid key for OAEP decryption", e);
@@ -125,7 +125,7 @@ public final class OAEPEncryptionService {
             //   - Hash algorithm mismatch between encrypt and decrypt
             throw new OAEPException(
                 "OAEP decyption failed --- ciphertext is invalid, corrupted, " +
-                "or was encrypted with a different key or hash algorithm." + e
+                "or was encrypted with a different key or hash algorithm.", e
             );
         } catch (IllegalBlockSizeException e) {
             
@@ -145,7 +145,7 @@ public final class OAEPEncryptionService {
     //   k=256, hLen=32 -> maxPlainText = 256 - 64 - 2 = 190 bytes
     public int maxPlaintextBytes(PublicKey publickey) {
         
-        if (!(publickey instanceof java.secuirty.interfaces.RSAPublicKey rsaPub))
+        if (!(publickey instanceof java.security.interfaces.RSAPublicKey rsaPub))
         throw new IllegalArgumentException("Not an RSA public key");
 
         int modulusBytes = (rsaPub.getModulus().bitLength() + 7) / 8;
@@ -155,11 +155,11 @@ public final class OAEPEncryptionService {
 
     //OAEP Size limit by attempting to encryp a payload that is 
     //excatly 1 byte over the limit.
-    public void demostrateSizeLimit(PublicKey publickey) {
+    public void demonstrateSizeLimit(PublicKey publickey) {
         int limit = maxPlaintextBytes(publickey);
 
         System.out.println("OAEP size limit for this key: %d bytes".formatted(limit));
-        Sysstem.out.println("Attempting to encrypt %d bytes (1 over limit)...".formatted(limit + 1));
+        System.out.println("Attempting to encrypt %d bytes (1 over limit)...".formatted(limit + 1));
 
         byte[] oversize = new byte[limit + 1];
 
@@ -179,7 +179,7 @@ public final class OAEPEncryptionService {
     // - Mask Generation Function
     // - PSource: Encdoing Parameter
 
-    private OAEPParameterSpec buildOaepParams() {
+    private OAEPParameterSpec buildOAEPParams() {
         return new OAEPParameterSpec(
             hashAlgorithm.JceName,
             "MGF1",
@@ -203,7 +203,7 @@ public final class OAEPEncryptionService {
                     "then wrap the AES key with RSA-OAEP."
                 ).formatted(
                     plaintext.length, max, 
-                    ((Java.security.interface.RSAPublicKey) publicket).getModulus().bitLength(),
+                    ((java.security.interfaces.RSAPublicKey) publickey).getModulus().bitLength(),
                     hashAlgorithm.JceName,
                     ((java.security.interfaces.RSAPublicKey) publickey).getModulus().bitLength() / 8,
                     2 * hashAlgorithm.DigestBytes
