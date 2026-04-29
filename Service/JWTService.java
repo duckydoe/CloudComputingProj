@@ -31,12 +31,15 @@ public final class JWTService {
     private static final Base64.Encoder B64_URL = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder B64_URL_DEC = Base64.getUrlDecoder();
 
+    public final String algHeader;
+    public final String jceName; 
+    public final PSSParameterSpec pssParams;
+    
     public enum Algorithm{
         RS256("RS256", "SHA256withRSA", null),
-
         PS256("PS256", "SHA256withRSA/PSS",
             new PSSParameterSpec("SHA-256", "MGF1",
-                MGF1ParameterSpec.SHA256, 32, 11
+                MGF1ParameterSpec.SHA256, 32, 1
             )
         );
 
@@ -53,7 +56,7 @@ public final class JWTService {
 
     //Default PS256 (Rec)
     public JWTService() {
-        this(Alogorithm.PS256;
+        this(Alogorithm.PS256);
     }
     public JWTService(Algorithm algorithm) {
         this.algorithm = algorithm;
@@ -85,7 +88,7 @@ public final class JWTService {
 
         // Assemble final JWT
         String jwt = signingInput + "." + encodedSignature;
-        Log.fine("Issued JWT: alg=%s, claims=%s".formatted(algorithm.algHeader, claims.keySet()));
+        LOG.fine("Issued JWT: alg=%s, claims=%s".formatted(algorithm.algHeader, claims.keySet()));
         return jwt;
     }
 
@@ -131,18 +134,18 @@ public final class JWTService {
         String encodedSignautre = parts[2];
 
         //Step 2: Decode and Validate Header
-        String headerJson = new String(decodeB65url(encodedHeader), StandardCharsets.UTF_8);
+        String headerJson = new String(decodeB64url(encodedHeader), StandardCharsets.UTF_8);
         validateHeader(headerJson);
 
         //Step 3:Verify RSA signature over "Header.payload"
         String signingInput = encodedHeader + "." + encodedPayload;
-        byte[] signatureBytes = decodeB65url(encodedSignautre);
+        byte[] signatureBytes = decodeB64url(encodedSignautre);
         boolean signatureValid = verifySignature(signingInput.getBytes(StandardCharsets.UTF_8),
             signatureBytes,
             publicKey);
 
         if (!signatureValid) 
-            throw new JWTExcpetion(
+            throw new JWTException(
         "JWT signature verification FAILED. " + "The token was not signed by the expected private key, " 
         + "The token was not signed by the expected private key, " +
         "or the token has been tampered with.");
@@ -154,7 +157,7 @@ public final class JWTService {
         // Step 5: Check Expiration
         if (claims.containsKey("exp")) {
             long exp = ((Number) claims.get("exp")).longValue();
-            if (Intstant.now().getEpochSecond() > exp)
+            if (Instant.now().getEpochSecond() > exp)
                 throw new JWTException(
                 "JWT has expired. exp=%d, now=%d (delta: %d seconds)".formatted(exp, Instant.now().getEpochSecond(),
             Instant.now().getEpochSecond() - exp));
@@ -225,7 +228,7 @@ public final class JWTService {
     */
 
         private String buildPayloadJson(Map<String, Object> claims) {
-            StirngBuilder sb = new StringBuilder("{");
+            StringBuilder sb = new StringBuilder("{");
             boolean first = true;
             for (var entry : claims.entrySet()) {
                 if (!first) sb.append(", ");
@@ -251,7 +254,7 @@ public final class JWTService {
         @SuppressWarnings("unchecked")
         private Map<String, Object> parseJson(String json) {
             json = json.trim();
-            if (!json.startWith("{") || !json.endsWith("}"))
+            if (!json.startsWith("{") || !json.endsWith("}"))
                 throw new JWTException("JWT payload is not a valid JSON object");
             json = json.substring(1, json.length() - 1).trim();
 
@@ -259,7 +262,7 @@ public final class JWTService {
 
             //Simple field extraction - handles number and string values
             // For nested objectes, arrays, use Jackson in production   
-            String [] apirs = json.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+            String [] pairs = json.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
             for (String pair : pairs) {
                 String[] kv = pair.trim().split(":", 2);
                 if (kv.length < 2) continue;
@@ -281,7 +284,7 @@ public final class JWTService {
         }
 
         private void validateHeader(String headerJson) {
-            if (!headerJson.contains("\"a;g\":\"" + algorithm.algHeader + "\""))
+            if (!headerJson.contains("\"alg\":\"" + algorithm.algHeader + "\""))
                 throw new JWTException(
             "JWT header algorithm mismatch. Expected '%s', got: %s"
             .formatted(algorithm.algHeader, headerJson));
@@ -292,7 +295,7 @@ public final class JWTService {
                 Signature sig = Signature.getInstance(algorithm.jceName, SecurityProvider.BC());
                 if (algorithm.pssParams != null)
                     sig.setParameter(algorithm.pssParams);
-                sig.initSign(, new SecureRandom());
+                sig.initSign(privateKey, new SecureRandom());
                 sig.update(data);
                 return sig.sign();
             }catch (Exception e) {
