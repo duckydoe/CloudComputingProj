@@ -6,7 +6,6 @@ import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.*;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateConverter;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
@@ -109,7 +108,7 @@ public final class X509CertificateService {
             builder.addExtension(
                 Extension.basicConstraints,
                 true,
-                new basicConstraints(isCA)
+                new BasicConstraints(isCA)
             );
 
             int keyUsageBits = isCA ? KeyUsage.digitalSignature | KeyUsage.keyCertSign | KeyUsage.cRLSign
@@ -152,7 +151,7 @@ public final class X509CertificateService {
             }
 
             ContentSigner signer = new JcaContentSignerBuilder(SIGNING_ALGORITHM)
-                .setProvider(SecurityProvider.BC()).build(KeySpec.privateKey());
+                .setProvider(SecurityProvider.BC()).build(KeySpec.privatekey());
 
                 X509Certificate cert = new JcaX509v3CertificateConverter()
                     .setProvider(SecurityProvider.BC())
@@ -206,13 +205,13 @@ public final class X509CertificateService {
 
             if (!sanDnsNames.isEmpty()) {
                 GeneralName[] names = sanDnsNames.stream()
-                    .map(dns -> new GernalName(GeneralName.dNSName, dns))
+                    .map(dns -> new GeneralName(GeneralName.dNSName, dns))
                     .toArray(GeneralName[]::new);
 
                 builder.addExtension(Extension.subjectAlternativeName, false, new GeneralNames(names));
             }
 
-            builder.addExtension(Extension.SubjectKeyIdentifier, false, new subjectKeyIdentifier(subjectKeySpec.publicKey().getEncoded()));
+            builder.addExtension(Extension.subjectKeyIdentifier, false, new SubjectKeyIdentifier(subjectKeySpec.publicKey().getEncoded()));
 
             builder.addExtension(Extension.authorityKeyIdentifier, false, new AuthorityKeyIdentifier(caKeySpec.publicKey().getEncoded()));
 
@@ -232,7 +231,7 @@ public final class X509CertificateService {
          }catch (Exception e) {
             throw new CertificateServiceException(
                 "Failed to issue certificate for '%s'"
-                .formatted(subjctDN), e );
+                .formatted(subjectDN), e );
          }
     }
 
@@ -247,7 +246,7 @@ public final class X509CertificateService {
 
             List<X509Certificate> chain = new ArrayList<>();
             chain.add(endEntityCert);
-            chain.addAll(intermediateCerts);
+            chain.addAll(intermediatecerts);
 
             CertificateFactory cf = CertificateFactory.getInstance("X.509", SecurityProvider.BC());
             CertPath certPath = cf.generateCertPath(chain);
@@ -295,13 +294,12 @@ public final class X509CertificateService {
         try{
             boolean[] ku = cert.getKeyUsage();
             if (ku != null) {
-                Sustem.out.println("  KeyUsage:     "+
+                System.out.println("  KeyUsage:     "+
                 (ku[0] ? "digitalSignature " : "")+
                 (ku[2] ? "keyEncipherment " : "") +
                 (ku[5] ? "keyCertSign " : "") +
-                (ku[6] ? "cRLSign" : "")
+                (ku[6] ? "cRLSign" : ""));
             }
-        }
         }catch(Exception ignored) {}
         System.out.println("=========================================================");
     }
