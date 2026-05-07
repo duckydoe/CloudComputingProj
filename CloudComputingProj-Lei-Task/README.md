@@ -196,13 +196,3 @@ All dependencies are managed by Maven and downloaded automatically on first buil
 
 ---
 
-## Known Issues
-
-**BouncyCastle JCE Authentication**
-Running from the fat JAR (`rsa-crypto-demo-1.0-SNAPSHOT.jar`) causes a `SecurityException` because the shade plugin strips BouncyCastle's signing certificates. Always use the individual JAR classpath commands shown above, or use the provided `rundemo.bat` script.
-
-**JMH Annotation Processor**
-JMH 1.37's annotation processor has a known incompatibility with Java 25's compiler pipeline. `CryptoBenchmark.java` contains the full JMH annotation-based implementation for reference, but `SimpleBenchmark.java` is used for actual execution as it produces equivalent results without requiring annotation processing.
-
----
--
